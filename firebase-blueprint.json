@@ -1,0 +1,116 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "name": { "type": "string", "description": "Student or Staff Name" },
+        "email": { "type": "string", "description": "College or Google email" },
+        "department": { "type": "string", "description": "College department" },
+        "year": { "type": "string", "description": "Year of study or Faculty/Staff" },
+        "section": { "type": "string", "description": "Section (A, B, C, etc.)" },
+        "role": { "type": "string", "description": "student, faculty, staff, or admin" },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      }
+    },
+    "LostItem": {
+      "collection": "lostItems",
+      "fields": {
+        "userId": { "type": "string", "description": "Owner UID" },
+        "userName": { "type": "string", "description": "Owner name" },
+        "userEmail": { "type": "string", "description": "Owner college email" },
+        "userDept": { "type": "string", "description": "Owner department" },
+        "title": { "type": "string", "description": "Item name" },
+        "category": { "type": "string", "description": "Item category" },
+        "location": { "type": "string", "description": "Campus location area" },
+        "locationDetail": { "type": "string", "description": "Specific room/spot" },
+        "date": { "type": "string", "description": "Date lost YYYY-MM-DD" },
+        "time": { "type": "string", "description": "Approximate time" },
+        "description": { "type": "string", "description": "General description" },
+        "distinctiveDetails": { "type": "string", "description": "Unique identifying traits" },
+        "reward": { "type": "string", "description": "Optional reward" },
+        "imageUrl": { "type": "string", "description": "Photo URL" },
+        "status": { "type": "string", "description": "open, claim_pending, returned, resolved" },
+        "isDemo": { "type": "boolean", "description": "Whether this is demo test data" },
+        "createdAt": { "type": "number", "description": "Creation timestamp" }
+      }
+    },
+    "FoundItem": {
+      "collection": "foundItems",
+      "fields": {
+        "userId": { "type": "string", "description": "Finder UID" },
+        "userName": { "type": "string", "description": "Finder name" },
+        "userEmail": { "type": "string", "description": "Finder college email" },
+        "userDept": { "type": "string", "description": "Finder department" },
+        "title": { "type": "string", "description": "Item name" },
+        "category": { "type": "string", "description": "Item category" },
+        "location": { "type": "string", "description": "Campus location found" },
+        "locationDetail": { "type": "string", "description": "Specific spot found" },
+        "date": { "type": "string", "description": "Date found YYYY-MM-DD" },
+        "time": { "type": "string", "description": "Approximate time" },
+        "description": { "type": "string", "description": "General description" },
+        "keptAt": { "type": "string", "description": "Where it is currently kept safe" },
+        "imageUrl": { "type": "string", "description": "Photo URL" },
+        "status": { "type": "string", "description": "open, claim_pending, returned, resolved" },
+        "isDemo": { "type": "boolean", "description": "Whether this is demo test data" },
+        "createdAt": { "type": "number", "description": "Creation timestamp" }
+      }
+    },
+    "Claim": {
+      "collection": "claims",
+      "fields": {
+        "itemId": { "type": "string", "description": "Associated item ID" },
+        "itemType": { "type": "string", "description": "lost or found" },
+        "itemTitle": { "type": "string", "description": "Item name" },
+        "claimantId": { "type": "string", "description": "Claimant UID" },
+        "claimantName": { "type": "string", "description": "Claimant name" },
+        "claimantEmail": { "type": "string", "description": "Claimant email" },
+        "claimantDept": { "type": "string", "description": "Claimant department" },
+        "claimantYear": { "type": "string", "description": "Claimant year" },
+        "claimantSection": { "type": "string", "description": "Claimant section" },
+        "privateProof": { "type": "string", "description": "Private identifying proof" },
+        "uniqueMarks": { "type": "string", "description": "Secret scratches/marks" },
+        "serialOrContents": { "type": "string", "description": "Serial number or bag contents" },
+        "status": { "type": "string", "description": "pending, under_review, approved, rejected, returned" },
+        "adminNotes": { "type": "string", "description": "Admin review commentary" },
+        "createdAt": { "type": "number", "description": "Timestamp" },
+        "updatedAt": { "type": "number", "description": "Timestamp" }
+      }
+    },
+    "Match": {
+      "collection": "matches",
+      "fields": {
+        "lostItemId": { "type": "string", "description": "Lost item reference" },
+        "foundItemId": { "type": "string", "description": "Found item reference" },
+        "score": { "type": "number", "description": "Match score 0-100" },
+        "reasons": { "type": "array", "description": "Match reasons" },
+        "mismatches": { "type": "array", "description": "Discrepancies" },
+        "recommendation": { "type": "string", "description": "Recommendation" },
+        "confidence": { "type": "string", "description": "Low, Medium, High" },
+        "isReviewed": { "type": "boolean", "description": "Whether reviewed by admin or user" },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      }
+    },
+    "Notification": {
+      "collection": "notifications",
+      "fields": {
+        "userId": { "type": "string", "description": "Recipient UID or 'broadcast'" },
+        "title": { "type": "string", "description": "Notification title" },
+        "message": { "type": "string", "description": "Notification body" },
+        "type": { "type": "string", "description": "match, claim, update, announcement" },
+        "linkId": { "type": "string", "description": "Related item/claim ID" },
+        "linkType": { "type": "string", "description": "item, claim, match" },
+        "read": { "type": "boolean", "description": "Read status" },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      }
+    },
+    "CampusLocation": {
+      "collection": "campusLocations",
+      "fields": {
+        "name": { "type": "string", "description": "Location name" },
+        "zone": { "type": "string", "description": "Zone classification" },
+        "active": { "type": "boolean", "description": "Active status" }
+      }
+    }
+  }
+}

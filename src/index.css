@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: #EDEFE8;
+    --panel: #F7F8F3;
+    --ink: #1E2A28;
+    --ink-soft: #52625C;
+    --line: #CFD4C6;
+    --teal: #2C6E63;
+    --teal-dark: #1F4E46;
+    --amber: #D98C2B;
+    --amber-dark: #B06E1B;
+    --red: #B4442E;
+    --white: #FFFFFF;
+    --radius: 4px;
+  }
+
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Fraunces', serif;
+    letter-spacing: -0.01em;
+  }
+}

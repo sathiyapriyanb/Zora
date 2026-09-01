@@ -1,0 +1,8 @@
+{
+  "name": "RTC Lost & Found Hub",
+  "description": "Real-time campus lost and found registry for Rathinam Technical Campus (RTC), Coimbatore, with AI-powered matching, claim verification, and instant notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
