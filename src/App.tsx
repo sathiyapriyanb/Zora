@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { LostFoundItem, AppNotification } from './types';
-import { RTC_CAMPUS_LOCATIONS } from './data';
+import { LostFoundItem, AppNotification, TesterFeedback } from './types';
+import { RTC_CAMPUS_LOCATIONS, DOCUMENTED_CAMPUS_TESTERS } from './data';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import {
   subscribeAllItems,
   subscribeCampusLocations,
   subscribeUserNotifications,
+  subscribeTesterFeedback,
   markNotificationReadDoc,
   seedRtcDemoData
 } from './lib/firebase';
@@ -21,8 +22,10 @@ import { AiMatchModal } from './components/AiMatchModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { NotificationsDrawer } from './components/NotificationsDrawer';
 import { StudentProfileModal } from './components/StudentProfileModal';
+import { TesterFeedbackModal } from './components/TesterFeedbackModal';
+import { SecurityRulesModal } from './components/SecurityRulesModal';
 
-import { MapPin, Shield, Sparkles, Building2, ExternalLink } from 'lucide-react';
+import { MapPin, Shield, Sparkles, Building2, ExternalLink, Users, ShieldCheck } from 'lucide-react';
 
 function MainAppContent() {
   const { profile, isAdmin, showProfileModal, setShowProfileModal } = useAuth();
@@ -40,6 +43,9 @@ function MainAppContent() {
     null
   );
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState(false);
+  const [testerFeedbackList, setTesterFeedbackList] = useState<TesterFeedback[]>(DOCUMENTED_CAMPUS_TESTERS);
+  const [showTesterFeedbackModal, setShowTesterFeedbackModal] = useState(false);
+  const [showSecurityRulesModal, setShowSecurityRulesModal] = useState(false);
 
   // Subscribe to real-time items & locations
   useEffect(() => {
@@ -53,9 +59,16 @@ function MainAppContent() {
       }
     });
 
+    const unsubFeedback = subscribeTesterFeedback((feedbacks) => {
+      if (feedbacks.length > 0) {
+        setTesterFeedbackList(feedbacks);
+      }
+    });
+
     return () => {
       unsubItems();
       unsubLocations();
+      unsubFeedback();
     };
   }, []);
 
@@ -109,6 +122,8 @@ function MainAppContent() {
         openCount={openCount}
         notifications={notifications}
         onOpenNotifications={() => setIsNotifDrawerOpen(true)}
+        onOpenTesterFeedback={() => setShowTesterFeedbackModal(true)}
+        onOpenSecurityRules={() => setShowSecurityRulesModal(true)}
       />
 
       {/* Main Content Area */}
@@ -123,6 +138,8 @@ function MainAppContent() {
             onFindMatch={handleFindMatch}
             onNavigateToLost={() => setActiveTab('lost')}
             onNavigateToFound={() => setActiveTab('found')}
+            onOpenTesterFeedback={() => setShowTesterFeedbackModal(true)}
+            onOpenSecurityRules={() => setShowSecurityRulesModal(true)}
           />
         )}
 
@@ -146,6 +163,8 @@ function MainAppContent() {
           <AdminDashboard
             campusLocations={campusLocations}
             onViewItem={(item) => setSelectedItem(item)}
+            onOpenTesterFeedback={() => setShowTesterFeedbackModal(true)}
+            onOpenSecurityRules={() => setShowSecurityRulesModal(true)}
           />
         )}
       </main>
@@ -222,6 +241,21 @@ function MainAppContent() {
         <StudentProfileModal onClose={() => setShowProfileModal(false)} />
       )}
 
+      {/* Campus Tester Usability Feedback Modal */}
+      {showTesterFeedbackModal && (
+        <TesterFeedbackModal
+          feedbackList={testerFeedbackList}
+          onClose={() => setShowTesterFeedbackModal(false)}
+        />
+      )}
+
+      {/* Database-Layer Firestore Security Rules Modal */}
+      {showSecurityRulesModal && (
+        <SecurityRulesModal
+          onClose={() => setShowSecurityRulesModal(false)}
+        />
+      )}
+
       {/* RTC Institutional Footer */}
       <footer className="border-t-2 border-[#1E2A28] py-8 text-[#52625C] text-xs bg-[#F7F8F3] mt-auto">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -239,7 +273,23 @@ function MainAppContent() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px] font-mono">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-[11px] font-mono justify-center">
+            <button
+              onClick={() => setShowTesterFeedbackModal(true)}
+              className="text-[#1F4E46] font-bold hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <Users className="w-3.5 h-3.5 text-[#1F4E46]" />
+              <span>Usability Studies ({testerFeedbackList.length})</span>
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => setShowSecurityRulesModal(true)}
+              className="text-[#1F4E46] font-bold hover:underline cursor-pointer flex items-center gap-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#1F4E46]" />
+              <span>Security Rules &amp; Privacy</span>
+            </button>
+            <span>•</span>
             <span className="text-[#1F4E46] font-bold">{openCount} active campus listings</span>
             <span>•</span>
             <button

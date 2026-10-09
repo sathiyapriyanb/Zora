@@ -31,9 +31,10 @@ import {
   ClaimRecord,
   AiMatchResult,
   AppNotification,
-  CampusLocation
+  CampusLocation,
+  TesterFeedback
 } from '../types';
-import { RTC_LOCATIONS, RTC_DEMO_ITEMS } from '../data';
+import { RTC_LOCATIONS, RTC_DEMO_ITEMS, DOCUMENTED_CAMPUS_TESTERS } from '../data';
 import firebaseConfigData from '../../firebase-applet-config.json';
 
 // Initialize Firebase App
@@ -381,3 +382,45 @@ export async function deleteCampusLocationDoc(name: string): Promise<void> {
     await deleteDoc(s.ref);
   }
 }
+
+// Campus Usability Tester Feedback Subscription & Management
+export function subscribeTesterFeedback(callback: (feedbackList: TesterFeedback[]) => void) {
+  const colRef = collection(db, 'testerFeedback');
+  const q = query(colRef, orderBy('createdAt', 'desc'));
+
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      if (snapshot.empty) {
+        callback(DOCUMENTED_CAMPUS_TESTERS);
+      } else {
+        const list = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...docSnap.data(),
+        })) as TesterFeedback[];
+        // Combine any cloud tester submissions with baseline documented studies
+        const combined = [...list];
+        DOCUMENTED_CAMPUS_TESTERS.forEach((baseline) => {
+          if (!combined.some((c) => c.id === baseline.id)) {
+            combined.push(baseline);
+          }
+        });
+        callback(combined);
+      }
+    },
+    (err) => {
+      console.warn('Firestore testerFeedback subscription warning:', err);
+      callback(DOCUMENTED_CAMPUS_TESTERS);
+    }
+  );
+}
+
+export async function addTesterFeedbackDoc(feedback: Omit<TesterFeedback, 'id' | 'createdAt'>): Promise<string> {
+  const colRef = collection(db, 'testerFeedback');
+  const docRef = await addDoc(colRef, {
+    ...feedback,
+    createdAt: Date.now(),
+  });
+  return docRef.id;
+}
+

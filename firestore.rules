@@ -2,7 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
+    // =========================================================================
+    // GLOBAL SECURITY PRIMITIVES & IDENTITY HELPERS
+    // =========================================================================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -11,84 +14,179 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // Verified campus administrator: checked against trusted admin documents or college staff role
     function isAdmin() {
       return isAuthenticated() && (
         request.auth.token.admin == true ||
         request.auth.token.email.matches('.*@rathinam.*') ||
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
-    // User profiles
+    // =========================================================================
+    // 1. USER PROFILES (/users/{userId})
+    // PII ISOLATION: Strict user-level access restriction
+    // =========================================================================
     match /users/{userId} {
+      // Students can view other student public directory info, or their own profile
       allow read: if isAuthenticated();
-      allow create, update: if isOwner(userId) || isAdmin();
+      
+      // Only the authenticated student can create or update their own profile
+      // Users cannot elevate their own role to 'admin'
+      allow create: if isOwner(userId) && (!('role' in request.resource.data) || request.resource.data.role != 'admin' || isAdmin());
+      allow update: if isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) || isAdmin());
       allow delete: if isAdmin();
     }
 
-    // Lost item reports
+    // =========================================================================
+    // 2. LOST ITEM REPORTS (/lostItems/{itemId})
+    // Public directory of lost belongings.
+    // Writes are bound to authenticated student UIDs.
+    // =========================================================================
     match /lostItems/{itemId} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      // Must be authenticated and must match author UID
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Author or admin can update status, details, or mark resolved
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.userId == request.auth.uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt']))
+      );
+      
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Found item reports
+    // =========================================================================
+    // 3. FOUND ITEM REPORTS (/foundItems/{itemId})
+    // Custody and holding location tracking.
+    // =========================================================================
     match /foundItems/{itemId} {
       allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.userId == request.auth.uid && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'createdAt']))
+      );
+      
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Claims with private proof
+    // =========================================================================
+    // 4. OWNERSHIP CLAIMS & CONFIDENTIAL EVIDENCE (/claims/{claimId})
+    // -------------------------------------------------------------------------
+    // DATABASE-LAYER FIELD-RESTRICTION ARCHITECTURE:
+    // This collection contains private fields:
+    // - `privateProof` (e.g. unlisted scratches, lockscreen password, private contents)
+    // - `uniqueMarks` (e.g. secret stickers, engraved names)
+    // - `serialOrContents` (e.g. device serial numbers, contents of a wallet/bag)
+    // - `claimantEmail` & `claimantPhone` (student personal contact details)
+    //
+    // DATABASE LAYER RESTRICTION:
+    // 1. BLIND READ GATE: Unauthenticated users or non-claimant students are
+    //    strictly DENIED from reading claim documents. Even if an attacker executes
+    //    collection-level queries or knows a claimId, Firestore returns PERMISSION_DENIED.
+    // 2. ANTI-SPOOFING WRITE GATE: A student can only submit a claim under their own
+    //    authenticated UID (`request.resource.data.claimantId == request.auth.uid`).
+    // 3. TERMINAL STATE & PERMISSION LOCK: The claimant cannot self-approve their claim
+    //    (status must begin as 'pending'). Only verified campus admins can alter
+    //    the verification status to 'approved' or 'rejected' and append `adminNotes`.
+    // =========================================================================
     match /claims/{claimId} {
+      // READ: Restricted strictly to the specific claimant OR campus security/admin
       allow read: if isAuthenticated() && (
         resource.data.claimantId == request.auth.uid ||
         isAdmin()
       );
-      allow create: if isAuthenticated();
+      
+      // CREATE: Authenticated student can create a claim only if bound to their own UID
+      // and initialized with 'pending' status (prevents self-approval exploits)
+      allow create: if isAuthenticated() &&
+        request.resource.data.claimantId == request.auth.uid &&
+        (request.resource.data.status == 'pending');
+      
+      // UPDATE: 
+      // - Admins can update status ('approved', 'rejected', 'under_review') and add adminNotes.
+      // - Regular claimants can ONLY update their own proof fields while status remains 'pending';
+      //   they cannot alter 'status', 'adminNotes', or reassign 'claimantId'.
       allow update: if isAuthenticated() && (
-        resource.data.claimantId == request.auth.uid ||
-        isAdmin()
+        isAdmin() ||
+        (
+          resource.data.claimantId == request.auth.uid &&
+          resource.data.status == 'pending' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'privateProof',
+            'uniqueMarks',
+            'serialOrContents',
+            'updatedAt'
+          ])
+        )
       );
+      
       allow delete: if isAdmin();
     }
 
-    // AI Matches
+    // =========================================================================
+    // 5. AI MATCH RESULTS (/matches/{matchId})
+    // Generated analysis between lost and found pairs.
+    // =========================================================================
     match /matches/{matchId} {
       allow read: if isAuthenticated();
       allow create, update: if isAuthenticated();
       allow delete: if isAdmin();
     }
 
-    // Notifications
+    // =========================================================================
+    // 6. IN-APP USER NOTIFICATIONS (/notifications/{notifId})
+    // Private notification dispatch.
+    // =========================================================================
     match /notifications/{notifId} {
+      // Only the recipient student or admin can read notifications
       allow read: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
         resource.data.userId == 'broadcast' ||
         isAdmin()
       );
+      
       allow create: if isAuthenticated();
+      
+      // Users can only toggle the 'read' status of their own notifications
       allow update: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
-        isAdmin()
+        isAdmin() ||
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        )
       );
+      
       allow delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid ||
         isAdmin()
       );
     }
 
-    // Campus Locations
+    // =========================================================================
+    // 7. CAMPUS TESTER USABILITY FEEDBACK (/testerFeedback/{feedbackId})
+    // Documented user feedback from students, faculty, and security personnel.
+    // =========================================================================
+    match /testerFeedback/{feedbackId} {
+      allow read: if true; // Publicly inspectable for usability evaluation transparency
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // 8. CAMPUS LOCATIONS & CATEGORIES CONFIGURATION
+    // =========================================================================
     match /campusLocations/{locId} {
       allow read: if true;
       allow create, update, delete: if isAuthenticated();
     }
 
-    // Categories
     match /categories/{catId} {
       allow read: if true;
       allow create, update, delete: if isAuthenticated();

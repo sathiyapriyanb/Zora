@@ -10,7 +10,9 @@ import {
   addCampusLocationDoc,
   deleteCampusLocationDoc,
   createLostItemDoc,
-  createFoundItemDoc
+  createFoundItemDoc,
+  subscribeClaims,
+  subscribeAllItems
 } from '../lib/firebase';
 import { RTC_DEMO_ITEMS } from '../data';
 import {
@@ -30,29 +32,63 @@ import {
   Check,
   AlertTriangle,
   User,
-  GraduationCap
+  GraduationCap,
+  Users,
+  ShieldCheck
 } from 'lucide-react';
 
 interface AdminDashboardProps {
-  lostItems: LostFoundItem[];
-  foundItems: LostFoundItem[];
-  claims: ClaimRecord[];
-  matches: AiMatchResult[];
+  lostItems?: LostFoundItem[];
+  foundItems?: LostFoundItem[];
+  claims?: ClaimRecord[];
+  matches?: AiMatchResult[];
   campusLocations: string[];
-  onOpenMatchModal: (lost: LostFoundItem, found: LostFoundItem) => void;
+  onOpenMatchModal?: (lost: LostFoundItem, found: LostFoundItem) => void;
   onRefreshData?: () => void;
+  onViewItem?: (item: LostFoundItem) => void;
+  onOpenTesterFeedback?: () => void;
+  onOpenSecurityRules?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
-  lostItems,
-  foundItems,
-  claims,
-  matches,
+  lostItems = [],
+  foundItems = [],
+  claims = [],
+  matches = [],
   campusLocations,
   onOpenMatchModal,
   onRefreshData,
+  onViewItem,
+  onOpenTesterFeedback,
+  onOpenSecurityRules,
 }) => {
   const { profile, isAdmin, toggleAdminRole } = useAuth();
+  const [internalClaims, setInternalClaims] = useState<ClaimRecord[]>(claims);
+  const [internalLost, setInternalLost] = useState<LostFoundItem[]>(lostItems);
+  const [internalFound, setInternalFound] = useState<LostFoundItem[]>(foundItems);
+
+  React.useEffect(() => {
+    if (claims && claims.length > 0) {
+      setInternalClaims(claims);
+    } else {
+      const unsub = subscribeClaims((c) => setInternalClaims(c));
+      return () => unsub();
+    }
+  }, [claims]);
+
+  React.useEffect(() => {
+    if (lostItems.length > 0 || foundItems.length > 0) {
+      setInternalLost(lostItems);
+      setInternalFound(foundItems);
+    } else {
+      const unsub = subscribeAllItems((items) => {
+        setInternalLost(items.filter((i) => i.type === 'lost'));
+        setInternalFound(items.filter((i) => i.type === 'found'));
+      });
+      return () => unsub();
+    }
+  }, [lostItems, foundItems]);
+
   const [activeTab, setActiveTab] = useState<'claims' | 'reports' | 'ai_matching' | 'locations' | 'demo'>(
     'claims'
   );
@@ -77,10 +113,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   >([]);
 
   // Stats calculation
-  const totalLost = lostItems.length;
-  const totalFound = foundItems.length;
-  const pendingClaims = claims.filter((c) => c.status === 'pending' || c.status === 'under_review').length;
-  const resolvedCount = [...lostItems, ...foundItems].filter(
+  const totalLost = internalLost.length;
+  const totalFound = internalFound.length;
+  const pendingClaims = internalClaims.filter((c) => c.status === 'pending' || c.status === 'under_review').length;
+  const resolvedCount = [...internalLost, ...internalFound].filter(
     (i) => i.status === 'returned' || i.status === 'resolved'
   ).length;
 
@@ -193,12 +229,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
-  const filteredClaims = claims.filter((c) => {
+  const filteredClaims = internalClaims.filter((c) => {
     if (claimFilter === 'all') return true;
     return c.status === claimFilter;
   });
 
-  const allReports = [...lostItems, ...foundItems].filter((item) => {
+  const allReports = [...internalLost, ...internalFound].filter((item) => {
     if (reportTypeFilter !== 'all' && item.type !== reportTypeFilter) return false;
     if (reportSearch) {
       const q = reportSearch.toLowerCase();
@@ -230,7 +266,27 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {onOpenTesterFeedback && (
+            <button
+              onClick={onOpenTesterFeedback}
+              className="text-xs bg-[#E6AF2E] hover:bg-[#d49e24] text-[#1E2A28] font-bold px-3 py-1.5 rounded cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Usability Studies (3+)</span>
+            </button>
+          )}
+
+          {onOpenSecurityRules && (
+            <button
+              onClick={onOpenSecurityRules}
+              className="text-xs bg-white text-[#1E2A28] hover:bg-[#EDEFE8] font-bold px-3 py-1.5 rounded cursor-pointer transition-colors flex items-center gap-1.5 shadow-xs"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#1F4E46]" />
+              <span>Security Rules</span>
+            </button>
+          )}
+
           <button
             onClick={toggleAdminRole}
             className="text-xs bg-white/10 hover:bg-white/20 border border-white/30 text-white font-bold px-3 py-1.5 rounded cursor-pointer transition-colors"

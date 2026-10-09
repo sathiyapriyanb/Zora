@@ -111,6 +111,24 @@
         "zone": { "type": "string", "description": "Zone classification" },
         "active": { "type": "boolean", "description": "Active status" }
       }
+    },
+    "TesterFeedback": {
+      "collection": "testerFeedback",
+      "fields": {
+        "testerName": { "type": "string", "description": "Name of tester" },
+        "role": { "type": "string", "description": "Student, Faculty, or Campus Security" },
+        "department": { "type": "string", "description": "College department or post" },
+        "identifier": { "type": "string", "description": "Roll number or staff ID" },
+        "scenarioTested": { "type": "string", "description": "Usability test scenario" },
+        "susScore": { "type": "number", "description": "System Usability Scale score (0-100)" },
+        "taskCompletionRate": { "type": "string", "description": "Percentage task completion" },
+        "taskDuration": { "type": "string", "description": "Time taken to complete task" },
+        "quote": { "type": "string", "description": "Qualitative tester quote" },
+        "frictionPoint": { "type": "string", "description": "Friction point identified" },
+        "adaptationMade": { "type": "string", "description": "System iteration implemented in response" },
+        "rating": { "type": "number", "description": "Satisfaction rating out of 5" },
+        "createdAt": { "type": "number", "description": "Creation timestamp" }
+      }
     }
   }
 }

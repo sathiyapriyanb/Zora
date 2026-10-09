@@ -164,3 +164,21 @@ export interface AppNotification {
   read: boolean;
   createdAt: number;
 }
+
+export interface TesterFeedback {
+  id: string;
+  testerName: string;
+  role: 'Student' | 'Faculty' | 'Campus Security' | 'Department Staff';
+  department: string;
+  identifier: string; // Roll number or Staff ID
+  scenarioTested: string;
+  susScore: number; // 0-100 System Usability Scale
+  taskCompletionRate: string; // e.g., '100%'
+  taskDuration: string; // e.g., '2m 14s'
+  rating: number; // 1-5
+  quote: string;
+  frictionPoint: string;
+  adaptationMade: string;
+  createdAt: number;
+}
+

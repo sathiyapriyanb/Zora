@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from '@google/genai';
+import { parseGeminiResponse, computeDeterministicMatch } from './src/lib/matchingEngine';
 
 const app = express();
 const PORT = 3000;
@@ -48,14 +49,11 @@ app.post('/api/gemini/match', async (req, res) => {
     const ai = getGeminiClient();
     if (!ai) {
       // Fallback algorithmic match if API key not set
-      const score = computeRuleBasedMatch(lostItem, foundItem);
+      const fallback = computeDeterministicMatch(lostItem, foundItem);
       return res.json({
-        score: score.score,
-        reasons: score.reasons,
-        mismatches: score.mismatches,
-        recommendation: score.recommendation,
-        confidence: score.confidence,
+        ...fallback,
         isAiPowered: false,
+        note: 'Evaluated using deterministic matching engine (Gemini API key not configured)',
       });
     }
 
@@ -131,7 +129,7 @@ IMPORTANT:
       },
     });
 
-    const parsed = JSON.parse(response.text || '{}');
+    const parsed = parseGeminiResponse(response.text);
     return res.json({
       ...parsed,
       isAiPowered: true,
@@ -139,86 +137,14 @@ IMPORTANT:
   } catch (err: any) {
     console.error('Error in /api/gemini/match:', err);
     // Fallback to rule-based comparison on error
-    const fallback = computeRuleBasedMatch(req.body.lostItem, req.body.foundItem);
+    const fallback = computeDeterministicMatch(req.body.lostItem, req.body.foundItem);
     return res.json({
       ...fallback,
       isAiPowered: false,
-      note: 'Processed via rule matching engine (Gemini fallback)',
+      note: 'Processed via RTC deterministic matching engine (Gemini fallback)',
     });
   }
 });
-
-// Helper for rule-based match calculation fallback
-function computeRuleBasedMatch(lost: any, found: any) {
-  let score = 0;
-  const reasons: string[] = [];
-  const mismatches: string[] = [];
-
-  if (!lost || !found) {
-    return {
-      score: 0,
-      reasons: ['Insufficient item data'],
-      mismatches: ['Missing item parameters'],
-      recommendation: 'Please provide complete item information.',
-      confidence: 'Low',
-    };
-  }
-
-  // Category match
-  if (lost.category && found.category && lost.category.toLowerCase() === found.category.toLowerCase()) {
-    score += 35;
-    reasons.push(`Matching category: ${lost.category}`);
-  } else {
-    mismatches.push(`Different categories (${lost.category} vs ${found.category})`);
-  }
-
-  // Location proximity
-  if (lost.location && found.location && lost.location.toLowerCase() === found.location.toLowerCase()) {
-    score += 25;
-    reasons.push(`Reported in the same campus area: ${lost.location}`);
-  } else if (lost.location && found.location) {
-    mismatches.push(`Different locations (${lost.location} vs ${found.location})`);
-  }
-
-  // Title keyword overlap
-  const lostWords = (lost.title || '').toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
-  const foundWords = (found.title || '').toLowerCase().split(/\s+/).filter((w: string) => w.length > 2);
-  const commonWords = lostWords.filter((w: string) => foundWords.includes(w));
-
-  if (commonWords.length > 0) {
-    score += Math.min(30, commonWords.length * 15);
-    reasons.push(`Matching keywords in title: ${commonWords.join(', ')}`);
-  }
-
-  // Date check
-  if (lost.date && found.date) {
-    const lostTime = new Date(lost.date).getTime();
-    const foundTime = new Date(found.date).getTime();
-    if (!isNaN(lostTime) && !isNaN(foundTime)) {
-      if (foundTime >= lostTime) {
-        score += 10;
-        reasons.push('Found date is on or after the reported lost date.');
-      } else {
-        score -= 20;
-        mismatches.push('Item was reported found before the reported lost date.');
-      }
-    }
-  }
-
-  score = Math.max(5, Math.min(95, score));
-  const confidence = score >= 75 ? 'High' : score >= 50 ? 'Medium' : 'Low';
-
-  return {
-    score,
-    reasons: reasons.length > 0 ? reasons : ['General category similarity'],
-    mismatches: mismatches.length > 0 ? mismatches : ['Verification needed with physical inspection'],
-    recommendation:
-      score >= 70
-        ? 'High probability match. Please submit a claim with private verification proof.'
-        : 'Possible match. Check the holding location or inquire with the finder.',
-    confidence,
-  };
-}
 
 // Vite middleware / static serve
 async function startServer() {

@@ -11,7 +11,10 @@ import {
   LogOut,
   Sparkles,
   MapPin,
-  GraduationCap
+  GraduationCap,
+  Users,
+  ShieldCheck,
+  FileKey2
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -20,6 +23,8 @@ interface HeaderProps {
   openCount: number;
   notifications: AppNotification[];
   onOpenNotifications: () => void;
+  onOpenTesterFeedback?: () => void;
+  onOpenSecurityRules?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,6 +33,8 @@ export const Header: React.FC<HeaderProps> = ({
   openCount,
   notifications,
   onOpenNotifications,
+  onOpenTesterFeedback,
+  onOpenSecurityRules,
 }) => {
   const { user, profile, isAdmin, login, mockLogin, logout, setShowProfileModal, toggleAdminRole } =
     useAuth();
@@ -47,7 +54,29 @@ export const Header: React.FC<HeaderProps> = ({
           <Sparkles className="w-3 h-3 text-[#E6AF2E]" />
           <span>Lost something? Found something? Help return it to its owner.</span>
         </div>
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
+          {onOpenTesterFeedback && (
+            <button
+              onClick={onOpenTesterFeedback}
+              className="text-[10.5px] bg-white/15 hover:bg-white/25 px-2.5 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 font-semibold text-white shadow-xs"
+              title="Documented User Feedback from 3+ Campus Testers"
+            >
+              <Users className="w-3 h-3 text-[#E6AF2E]" />
+              <span>Usability Studies (3+)</span>
+            </button>
+          )}
+
+          {onOpenSecurityRules && (
+            <button
+              onClick={onOpenSecurityRules}
+              className="text-[10.5px] bg-white/15 hover:bg-white/25 px-2.5 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 font-semibold text-white shadow-xs"
+              title="Database-Layer Firestore Security Rules"
+            >
+              <ShieldCheck className="w-3 h-3 text-[#A3D9CE]" />
+              <span>Security Rules</span>
+            </button>
+          )}
+
           <button
             onClick={toggleAdminRole}
             className="text-[10px] bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded cursor-pointer transition-colors"
@@ -147,6 +176,28 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Tools: Notifications & Profile */}
           <div className="flex items-center gap-2">
+            {onOpenTesterFeedback && (
+              <button
+                onClick={onOpenTesterFeedback}
+                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-[3px] bg-white border border-[#CFD4C6] text-[#1F4E46] hover:border-[#1E2A28] text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                title="Documented user feedback from 3+ campus testers"
+              >
+                <Users className="w-3.5 h-3.5 text-[#1F4E46]" />
+                <span>Tester Studies</span>
+              </button>
+            )}
+
+            {onOpenSecurityRules && (
+              <button
+                onClick={onOpenSecurityRules}
+                className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-[3px] bg-white border border-[#CFD4C6] text-[#1E2A28] hover:border-[#1E2A28] text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                title="Explicit Firestore Security Rules & Field Privacy"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-[#1F4E46]" />
+                <span>Security Rules</span>
+              </button>
+            )}
+
             {/* Notification Bell */}
             <button
               onClick={onOpenNotifications}
